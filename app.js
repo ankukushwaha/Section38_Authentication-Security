@@ -13,11 +13,12 @@ import passport from "passport";
 import passportLocalMongoose from "passport-local-mongoose";
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import findOrCreate from "mongoose-findorcreate";
+import { Strategy as GitHubStrategy } from 'passport-github2';
 
 const port = 3000;
 const app = express();
 
-console.log(process.env.API_KEY);
+// console.log(process.env.API_KEY); 
 
 app.use(express.static("public"));
 app.set('view engine', ejs);
@@ -37,7 +38,8 @@ mongoose.connect("mongodb://localhost:27017/userNameDb");
 const userSchema = new mongoose.Schema({
     Email: String, 
     Password: String,
-    googleId: String
+    googleId: String,
+    githubId: String
 })
 
 // const secret = process.env.SECRET;
@@ -67,9 +69,22 @@ passport.use(new GoogleStrategy({
     // userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo" 
   },
   function(accessToken, refreshToken, profile, cb) {
-    console.log(profile);
+    // console.log(profile); 
     User.findOrCreate({ googleId: profile.id }, function (err, user) {
       return cb(err, user);
+    });
+  }
+));
+
+passport.use(new GitHubStrategy({
+    clientID: process.env.GITHUB_ID,
+    clientSecret: process.env.GITHUB_SECRET,
+    callbackURL: "http://localhost:3000/auth/github/secrets"
+  },
+  function(accessToken, refreshToken, profile, done) {
+    // console.log(profile); 
+    User.findOrCreate({ githubId: profile.id }, function (err, user) {
+      return done(err, user);
     });
   }
 ));
@@ -87,7 +102,18 @@ app.get('/auth/google/secrets',
   function(req, res) {
     // Successful authentication, redirect home.
     res.redirect('/secrets');
-  });
+});
+
+app.get('/auth/github',
+   passport.authenticate('github', { scope: [ 'user:email' ] })
+);
+
+app.get('/auth/github/secrets', 
+  passport.authenticate('github', { failureRedirect: '/login' }),
+  function(req, res) {
+    // Successful authentication, redirect home.
+    res.redirect('/secrets');
+});
 
 app.get("/register", (req,res) => {
     res.render("register.ejs");
