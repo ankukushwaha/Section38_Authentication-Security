@@ -39,7 +39,8 @@ const userSchema = new mongoose.Schema({
     Email: String, 
     Password: String,
     googleId: String,
-    githubId: String
+    githubId: String,
+    secret: String
 })
 
 // const secret = process.env.SECRET;
@@ -56,10 +57,10 @@ passport.serializeUser(function(user, done) {
     done(null, user.id);
 });
 
-passport.deserializeUser(function(id, done) {
-    User.findById(id).then((user) => {
-        done(err, user);
-    }).catch((err) => console.log(err));
+passport.deserializeUser((user, cb) => {
+    process.nextTick(() => {
+      return cb(null, user);
+    });
 });
 
 passport.use(new GoogleStrategy({
@@ -124,8 +125,16 @@ app.get("/login", (req,res) => {
 })
 
 app.get("/secrets", (req,res) => {
+    User.find({"secret": {$ne : null}}).then((foundUser => {
+        if(foundUser){
+            res.render("secrets.ejs", {userWithSecrets: foundUser});
+        }
+    })).catch((err) => console.log(err));
+})
+
+app.get("/submit", (req,res) => {
     if(req.isAuthenticated()){
-        res.render("secrets.ejs");
+        res.render("submit.ejs");
     }
     else{
         res.redirect("/login");
@@ -137,6 +146,20 @@ app.get("/logout", (req,res) => {
         if (err) { console.log(err); }
         res.redirect('/');
     });
+})
+
+app.post("/submit", (req,res) => {
+    const secretToSubmit = req.body.secret;
+    // console.log(req.user); 
+    const id = req.user;
+    User.findById(id).then((found) => {
+        if(found){
+            found.secret = secretToSubmit;
+            found.save().then(() => {
+                res.redirect("/secrets");
+            })
+        }
+    }).catch((err) => console.log(err));
 })
 
 app.post("/register", (req,res) => {
