@@ -33,14 +33,18 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-mongoose.connect("mongodb://localhost:27017/userNameDb");
+try {
+    mongoose.connect("mongodb+srv://ankurkushwaha7408:Kushwaha123@cluster0.8onnf8w.mongodb.net/userNameDb");
+} catch (error) {
+    handleError(err);
+}
 
 const userSchema = new mongoose.Schema({
     Email: String, 
     Password: String,
     googleId: String,
     githubId: String,
-    secret: String
+    secret: String,
 })
 
 // const secret = process.env.SECRET;
@@ -67,7 +71,6 @@ passport.use(new GoogleStrategy({
     clientID: process.env.CLIENT_ID,
     clientSecret: process.env.CLIENT_SECRET,
     callbackURL: "http://localhost:3000/auth/google/secrets",
-    // userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo" 
   },
   function(accessToken, refreshToken, profile, cb) {
     // console.log(profile); 
@@ -84,7 +87,7 @@ passport.use(new GitHubStrategy({
   },
   function(accessToken, refreshToken, profile, done) {
     // console.log(profile); 
-    User.findOrCreate({ githubId: profile.id }, function (err, user) {
+    User.findOrCreate({username: profile.displayName, githubId: profile.id }, function (err, user) {
       return done(err, user);
     });
   }
